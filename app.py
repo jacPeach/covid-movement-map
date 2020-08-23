@@ -29,6 +29,8 @@ labels = {"NA": "SlateGrey", "< -50%": "DarkRed", "-50 to -40%": "FireBrick",
           "10 to 20%": "PaleGreen", "20 to 30%": "MediumSeaGreen", 
           "30 to 40%": "OliveDrab", "40 to 50%": "Olive", "> 50%": "SeaGreen"}
 
+show_all = False
+
 
 def import_data():
     # Read in the mobility data
@@ -105,11 +107,17 @@ app_layout = dbc.Container(
     children=[
         dbc.Row(
             dcc.Markdown(
-                    f"""
+                    """
         -----
-        ##### Data:
+        ##### Explanation:
         -----
-        This dashboard uses data sourced from the Google Community Mobility Reports
+        This dashboard uses data sourced from the Google Community Mobility Reports.  
+        Select the date shown on the map using the slider or by clicking on the time-series graph.  
+        Select the region shown on the time series graph using the map.  
+        Use the dropdown to select from the available sectors.  
+        -----  
+        The data gives the percent change in travel compared to a January 2020 baseline.  
+        -----  
         """
                         )
             ),
@@ -120,6 +128,14 @@ app_layout = dbc.Container(
                          value="Retail and Recreation",
                          style={"width": "50%"})
             ),
+        dcc.Slider(id="date-slider",
+                   min=min(slider_map.keys()),
+                   max=max(slider_map.keys()),
+                   value=0,
+                   step=1,
+                   marks={0: min(slider_map.values()),
+                          max(slider_map.keys()): max(slider_map.values())}
+                   ),
         dbc.Row(
             [
                 
@@ -133,14 +149,6 @@ app_layout = dbc.Container(
                     )
                 ], 
             ),
-        dcc.Slider(id="date-slider",
-                   min=min(slider_map.keys()),
-                   max=max(slider_map.keys()),
-                   value=0,
-                   step=1,
-                   marks={0: min(slider_map.values()),
-                          max(slider_map.keys()): max(slider_map.values())}
-                   ),
         dbc.Row(
             [
                 dbc.Col(
@@ -251,14 +259,16 @@ def update_choropleth(selected_date, selected_col):
                         category_orders={col: list(labels.keys())},
                         hover_data={selected_col:True, "date":False, 
                                     "iso_3166_2_code":False, col:False},
+                        scope="europe",
                         title=title,
-                        height=800
+                        height=600
                        )
     
     
     fig.update_geos(visible=False, fitbounds="locations")
     
-    fig.update_layout(legend_title_text="Percent Change")
+    fig.update_layout(legend_title_text="% Change from Jan 2020 Baseline",
+                      geo={"bgcolor": "rgba(0,0,0,0)"})
     
     return fig
 
@@ -269,20 +279,25 @@ def update_choropleth(selected_date, selected_col):
 def update_time_series(hover_data, selected_col):
     
     region = hover_data["points"][0]["hovertext"]
-    filtered_df = plot_df.loc[plot_df["sub_region_1"]==region].sort_values(by="date")
+    if show_all:
+        columns = ["iso_3166_2", "sub_region", "date", selected_col]
+        filtered_df = plot_df.loc[plot_df["sub_region_1"]==region][columns].sort_values(by="date")
+    else:
+        filtered_df = plot_df.loc[plot_df["sub_region_1"]==region].sort_values(by="date")
     return create_time_series(filtered_df, selected_col, region)
 
 def create_time_series(df, col, region):
     
     title = "<b>{}</b>".format(region)
     
-    df = df.set_index("date")[available_indicators].stack().reset_index()
-    df.columns = ["date", "Sector", "Percent Change"]
-    
-    
-    
-    fig = px.scatter(df, x="date", y="Percent Change", color="Sector",
-                     title=title)
+    if show_all:
+        df = df.set_index("date")[available_indicators].stack().reset_index()
+        df.columns = ["date", "Sector", "Percent Change"]
+        fig = px.scatter(df, x="date", y="Percent Change", color="Sector",
+                         title=title)
+    else:
+        fig = px.scatter(df, x="date", y=col,
+                         title=title)
     
     fig.update_traces(mode="lines")
     
