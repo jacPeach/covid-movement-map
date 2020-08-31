@@ -9,6 +9,7 @@ from itertools import product
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
+server = app.server
 
 col_map = {"retail_and_recreation": "Retail and Recreation", 
            "grocery_and_pharmacy": "Grocery and Pharmacy",
@@ -108,9 +109,7 @@ app_layout = dbc.Container(
         dbc.Row(
             dcc.Markdown(
                     """
-        -----
-        ##### Explanation:
-        -----
+        -----  
         This dashboard uses data sourced from the Google Community Mobility Reports.  
         Select the date shown on the map using the slider or by clicking on the time-series graph.  
         Select the region shown on the time series graph using the map.  
@@ -212,7 +211,6 @@ app.layout = html.Div([navbar, app_layout])
     Output("date-slider", "value"),
     [Input("time-series", "clickData")])
 def filter_date(cross_filter_date):
-    print(cross_filter_date)
     if cross_filter_date is None:
         return 0
     date = cross_filter_date["points"][0]["x"]
@@ -306,4 +304,4 @@ def create_time_series(df, col, region):
     return fig
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False)
